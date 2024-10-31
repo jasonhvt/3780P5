@@ -1,53 +1,61 @@
 #include <iostream>
+#include <cstring>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 #include <unistd.h>
-#include <netdb.h>
-#include <cstring>
 
+#define BUFSIZE 512
+#define PORT "3000"
 
-// provide hostname and port value as command line arguments
-// Mess up with these values and the socket call will likely fail
-// argv[0] is the executable name
 int main(int argc, char *argv[]) {
-  int sock, rval;
-  struct addrinfo hints, *results, *ptr;
-
-  // quick check if we provide the right arguments
-  if (argc != 3) {
-    std::cout << "Usage " << argv[0] << " destination_host destination_port" << std::endl;
-    return 1; // terminate
-  }
-  
-  // if we obtain the data from getaddrinfo, we might as well use it to open the socket
-
-  // first, we prepare hints by clearing all of its fields
-
-  memset(&hints, 0, sizeof(hints));
-  hints.ai_family = AF_UNSPEC;  // we ask for both IPv4 and IPv6
-  hints.ai_socktype = SOCK_DGRAM;
-  
-  if ((rval = getaddrinfo(argv[1], argv[2], &hints, &results)) != 0) { // error
-    std::cerr << "Error getting the destination address: " << gai_strerror(rval) << std::endl;
-    return 2;
-  }
-
-  // loop through the results from the linked list
-  for (ptr = results; ptr != NULL; ptr = ptr->ai_next) {  
-    if ((sock = socket(ptr->ai_family, ptr->ai_socktype, ptr->ai_protocol)) != -1) {
-      break;  // socket successful, no need to search further
+    if (argc != 2) {
+        std::cerr << "Usage: " << argv[0] << " <destination_host>" << std::endl;
+        return 1;
     }
-  }
 
-  // but we might reach the end of the list...
-  if (ptr == NULL) {
-    std::cerr << "Failed to open socket" << std::endl;
-    return 3;
-  }
+    int sockfd;
+    struct addrinfo hints, *servinfo, *p;
+    int rv;
 
-  // if not, we are ready to send here
-  // add the code to send "hello world" here
-  
-  
-  close(sock);
+    // Set up hints struct for address lookup
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_INET;       // IPv4
+    hints.ai_socktype = SOCK_DGRAM;  // UDP
+
+    // Get address info for the destination host and port
+    if ((rv = getaddrinfo(argv[1], PORT, &hints, &servinfo)) != 0) {
+        std::cerr << "getaddrinfo: " << gai_strerror(rv) << std::endl;
+        return 1;
+    }
+
+    // Loop through the results and connect to the first valid one
+    for (p = servinfo; p != nullptr; p = p->ai_next) {
+        if ((sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
+            perror("Socket creation failed");
+            continue;
+        }
+        break;
+    }
+
+    if (p == nullptr) {
+        std::cerr << "Failed to create socket" << std::endl;
+        return 1;
+    }
+
+    // Send message to server
+    const char *message = "Hello, World!";
+    if (sendto(sockfd, message, strlen(message), 0, p->ai_addr, p->ai_addrlen) == -1) {
+        perror("sendto failed");
+        close(sockfd);
+        freeaddrinfo(servinfo);
+        return 1;
+    }
+    std::cout << "Message sent: " << message << std::endl;
+
+    // Clean up
+    close(sockfd);
+    freeaddrinfo(servinfo);
+    return 0;
 }
