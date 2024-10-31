@@ -1,0 +1,39 @@
+# Compiler
+CXX = g++
+
+# Compiler flags
+CXXFLAGS = -Wall -std=c++11
+
+# Executable names
+SERVER_EXEC = server
+CLIENT_EXEC = client
+
+# Source files
+SERVER_SRC = 1-sopen.cc
+CLIENT_SRC = 2-send.cc
+
+# Default target to build both executables
+all: $(SERVER_EXEC) $(CLIENT_EXEC)
+
+# Build server
+$(SERVER_EXEC): $(SERVER_SRC)
+	$(CXX) $(CXXFLAGS) -o $(SERVER_EXEC) $(SERVER_SRC)
+
+# Build client
+$(CLIENT_EXEC): $(CLIENT_SRC)
+	$(CXX) $(CXXFLAGS) -o $(CLIENT_EXEC) $(CLIENT_SRC)
+
+# Run server
+run-server: $(SERVER_EXEC)
+	./$(SERVER_EXEC)
+
+# Run client with default arguments (localhost and port 3000)
+run-client: $(CLIENT_EXEC)
+	./$(CLIENT_EXEC) localhost 3000
+
+# Clean up executables
+clean:
+	rm -f $(SERVER_EXEC) $(CLIENT_EXEC)
+
+# Phony targets to avoid conflicts with files named "all", "clean", etc.
+.PHONY: all clean run-server run-client
