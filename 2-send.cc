@@ -2,38 +2,33 @@
 #include <cstring>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
+#include <netdb.h>
 #include <unistd.h>
 
-#define BUFSIZE 512
-#define PORT "3000"
-
 int main(int argc, char *argv[]) {
-    if (argc != 2) {
-        std::cerr << "Usage: " << argv[0] << " <destination_host>" << std::endl;
+    if (argc != 3) {
+        std::cerr << "Usage: " << argv[0] << " <destination_host> <destination_port>" << std::endl;
         return 1;
     }
 
-    int sockfd;
-    struct addrinfo hints, *servinfo, *p;
+    int sock;
+    struct addrinfo hints{}, *res, *p;
     int rv;
 
-    // Set up hints struct for address lookup
-    memset(&hints, 0, sizeof(hints));
-    hints.ai_family = AF_INET;       // IPv4
-    hints.ai_socktype = SOCK_DGRAM;  // UDP
+    // Setting up hints for getaddrinfo
+    memset(&hints, 0, sizeof hints);
+    hints.ai_family = AF_UNSPEC;    // Either IPv4 or IPv6
+    hints.ai_socktype = SOCK_DGRAM; // UDP
 
-    // Get address info for the destination host and port
-    if ((rv = getaddrinfo(argv[1], PORT, &hints, &servinfo)) != 0) {
+    if ((rv = getaddrinfo(argv[1], argv[2], &hints, &res)) != 0) {
         std::cerr << "getaddrinfo: " << gai_strerror(rv) << std::endl;
         return 1;
     }
 
-    // Loop through the results and connect to the first valid one
-    for (p = servinfo; p != nullptr; p = p->ai_next) {
-        if ((sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
-            perror("Socket creation failed");
+    // Loop through all the results and bind to the first we can
+    for (p = res; p != nullptr; p = p->ai_next) {
+        if ((sock = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
+            perror("socket");
             continue;
         }
         break;
@@ -41,21 +36,40 @@ int main(int argc, char *argv[]) {
 
     if (p == nullptr) {
         std::cerr << "Failed to create socket" << std::endl;
-        return 1;
+        return 2;
     }
 
-    // Send message to server
-    const char *message = "Hello, World!";
-    if (sendto(sockfd, message, strlen(message), 0, p->ai_addr, p->ai_addrlen) == -1) {
-        perror("sendto failed");
-        close(sockfd);
-        freeaddrinfo(servinfo);
-        return 1;
-    }
-    std::cout << "Message sent: " << message << std::endl;
+    // Sending message to the receiver
+    std::string message;
+    std::cout << "Enter a message: ";
+    std::getline(std::cin, message);
 
-    // Clean up
-    close(sockfd);
-    freeaddrinfo(servinfo);
+    int bytes_sent = sendto(sock, message.c_str(), message.size(), 0, p->ai_addr, p->ai_addrlen);
+    if (bytes_sent == -1) {
+        perror("sendto");
+        close(sock);
+        return 3;
+    }
+
+    // Buffer to hold the reply
+    char buffer[512];
+    memset(buffer, 0, sizeof buffer);
+    socklen_t addr_len = p->ai_addrlen;
+
+    // Receiving reply from the receiver
+    int bytes_received = recvfrom(sock, buffer, sizeof buffer - 1, 0, p->ai_addr, &addr_len);
+    if (bytes_received == -1) {
+        perror("recvfrom");
+        close(sock);
+        return 4;
+    }
+
+    // Null-terminate and display the reply
+    buffer[bytes_received] = '\0';
+    std::cout << "Received reply: " << buffer << std::endl;
+
+    freeaddrinfo(res);
+    close(sock);
     return 0;
 }
+
