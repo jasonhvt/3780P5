@@ -29,8 +29,8 @@ To send to a remote receiver: /sender <receiver_address> 3000
 
 ## **Testing**
 1. **Local**: Run receiver and sender on the same machine in different terminals.
-2. **Remote**: Run the receiver on `student0`: ssh student0.cs.uleth.ca ./receiver 3000 -4
-Then run the sender locally: ./sender student0.cs.uleth.ca 3000
+2. **Remote**: Run the receiver on `student0`: ssh student0.cs.uleth.ca ./receiver 3000 -4.
+**Remote**: Then run the sender locally: ./sender student0.cs.uleth.ca 3000
 
 ## **Cleaning Up**
 Remove executables: make clean
