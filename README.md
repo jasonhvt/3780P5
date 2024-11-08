@@ -28,9 +28,7 @@ Run the sender and send a message: make run-sender
 To send to a remote receiver: /sender <receiver_address> 3000
 
 ## **Testing**
-1. **Local**: Run receiver and sender on the same machine in different terminals.
-2. **Remote**: Run the receiver on `student0`: ssh student0.cs.uleth.ca ./receiver 3000 -4.
-**Remote**: Then run the sender locally: ./sender student0.cs.uleth.ca 3000
+**Local**: Run receiver and sender on the same machine in different terminals.
 
 ## **Cleaning Up**
 Remove executables: make clean
